@@ -1,0 +1,5 @@
+{
+  "name": "Lumina TTS: Bilingual English & Arabic",
+  "description": "A high-fidelity text-to-speech application supporting English and Arabic with single and multi-speaker capabilities using Gemini's native human-like voices.",
+  "requestFramePermissions": []
+}
