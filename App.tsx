@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { SpeakerConfig, TTSMode, Language, GeneratedAudio, VoiceName } from './types';
-import { generateTTS } from './services/geminiService';
+import { SpeakerConfig, TTSMode, Language, GeneratedAudio, VoiceName, Gender } from './types';
+import { generateTTS, generateAIText } from './services/geminiService';
 import { VoiceSelector } from './components/VoiceSelector';
 import { 
   Play, 
@@ -15,18 +15,23 @@ import {
   MessageSquareQuote,
   Loader2,
   Volume2,
-  Info
+  Info,
+  Sparkles,
+  Wand2,
+  ChevronRight
 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [text, setText] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
   const [mode, setMode] = useState<TTSMode>(TTSMode.SINGLE);
   const [language, setLanguage] = useState<Language>(Language.ENGLISH);
   const [speakers, setSpeakers] = useState<SpeakerConfig[]>([
-    { id: '1', name: 'Speaker A', voice: 'Kore' },
-    { id: '2', name: 'Speaker B', voice: 'Puck' },
+    { id: '1', name: 'Speaker A', voice: 'Kore', gender: 'female' },
+    { id: '2', name: 'Speaker B', voice: 'Puck', gender: 'male' },
   ]);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [audioResult, setAudioResult] = useState<GeneratedAudio | null>(null);
   const [history, setHistory] = useState<GeneratedAudio[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +42,39 @@ const App: React.FC = () => {
     setSpeakers(newSpeakers);
   };
 
+  const handleGenderChange = (index: number, gender: Gender) => {
+    const newSpeakers = [...speakers];
+    newSpeakers[index].gender = gender;
+    // Auto-select first voice of that gender
+    if (gender === 'male') {
+      newSpeakers[index].voice = 'Puck';
+    } else {
+      newSpeakers[index].voice = 'Kore';
+    }
+    setSpeakers(newSpeakers);
+  };
+
   const handleNameChange = (index: number, name: string) => {
     const newSpeakers = [...speakers];
     newSpeakers[index].name = name;
     setSpeakers(newSpeakers);
+  };
+
+  const handleGenerateAIText = async () => {
+    if (!aiPrompt.trim()) {
+      setError("Please enter a prompt for the AI.");
+      return;
+    }
+    setAiLoading(true);
+    setError(null);
+    try {
+      const generated = await generateAIText(aiPrompt, mode, language, speakers);
+      setText(generated);
+    } catch (err: any) {
+      setError("Failed to generate text: " + err.message);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const onGenerate = async () => {
@@ -130,35 +164,107 @@ const App: React.FC = () => {
             {/* Voice Selectors */}
             <div className="space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">1</span>
-                  <input 
-                    type="text" 
-                    value={speakers[0].name}
-                    onChange={(e) => handleNameChange(0, e.target.value)}
-                    className="flex-1 bg-transparent border-none focus:ring-0 font-medium text-slate-700 placeholder:text-slate-300"
-                    placeholder="Enter speaker name..."
-                  />
-                </div>
-                <VoiceSelector value={speakers[0].voice} onChange={(v) => handleVoiceChange(0, v)} />
-              </div>
-
-              {mode === TTSMode.MULTI && (
-                <div className="space-y-4 pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold">2</span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">1</span>
                     <input 
                       type="text" 
-                      value={speakers[1].name}
-                      onChange={(e) => handleNameChange(1, e.target.value)}
+                      value={speakers[0].name}
+                      onChange={(e) => handleNameChange(0, e.target.value)}
                       className="flex-1 bg-transparent border-none focus:ring-0 font-medium text-slate-700 placeholder:text-slate-300"
                       placeholder="Enter speaker name..."
                     />
                   </div>
-                  <VoiceSelector value={speakers[1].voice} onChange={(v) => handleVoiceChange(1, v)} />
+                  <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200">
+                    <button 
+                      onClick={() => handleGenderChange(0, 'male')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${speakers[0].gender === 'male' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      Male
+                    </button>
+                    <button 
+                      onClick={() => handleGenderChange(0, 'female')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${speakers[0].gender === 'female' ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      Female
+                    </button>
+                  </div>
+                </div>
+                <VoiceSelector 
+                  value={speakers[0].voice} 
+                  onChange={(v) => handleVoiceChange(0, v)} 
+                  genderFilter={speakers[0].gender}
+                />
+              </div>
+
+              {mode === TTSMode.MULTI && (
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold">2</span>
+                      <input 
+                        type="text" 
+                        value={speakers[1].name}
+                        onChange={(e) => handleNameChange(1, e.target.value)}
+                        className="flex-1 bg-transparent border-none focus:ring-0 font-medium text-slate-700 placeholder:text-slate-300"
+                        placeholder="Enter speaker name..."
+                      />
+                    </div>
+                    <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200">
+                      <button 
+                        onClick={() => handleGenderChange(1, 'male')}
+                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${speakers[1].gender === 'male' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        Male
+                      </button>
+                      <button 
+                        onClick={() => handleGenderChange(1, 'female')}
+                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${speakers[1].gender === 'female' ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        Female
+                      </button>
+                    </div>
+                  </div>
+                  <VoiceSelector 
+                    value={speakers[1].voice} 
+                    onChange={(v) => handleVoiceChange(1, v)} 
+                    genderFilter={speakers[1].gender}
+                  />
                 </div>
               )}
             </div>
+          </section>
+
+          {/* AI Text Generation */}
+          <section className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-2xl shadow-xl shadow-indigo-100 text-white space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Sparkles size={20} />
+                AI Content Creator
+              </h2>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold tracking-wider uppercase">Powered by Gemini</span>
+            </div>
+            <div className="relative">
+              <input 
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl py-3 px-4 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                placeholder="What should they talk about? (e.g. 'A friendly greeting')"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateAIText()}
+              />
+              <button 
+                onClick={handleGenerateAIText}
+                disabled={aiLoading}
+                className="absolute right-2 top-1.5 bottom-1.5 bg-white text-indigo-600 px-4 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                Generate
+              </button>
+            </div>
+            <p className="text-xs text-white/70">
+              {mode === TTSMode.SINGLE ? 'Generates a monologue' : 'Generates a dialogue between your speakers'} in {language === Language.ENGLISH ? 'English' : 'Arabic'}.
+            </p>
           </section>
 
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -168,6 +274,15 @@ const App: React.FC = () => {
                 Input Text
               </h2>
               <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(text);
+                    // Optional: show toast
+                  }}
+                  className="text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                >
+                  Copy Text
+                </button>
                 <button 
                   onClick={() => setText(language === Language.ENGLISH ? exampleEnglish : exampleArabic)}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
@@ -244,10 +359,10 @@ const App: React.FC = () => {
                   <div className="flex gap-2">
                     <a 
                       href={audioResult.url} 
-                      download={`lumina-tts-${Date.now()}.wav`}
+                      download={`lumina-ai-${Date.now()}.wav`}
                       className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
                     >
-                      <Download size={18} /> Download WAV
+                      <Download size={18} /> Download Audio
                     </a>
                   </div>
                 </div>

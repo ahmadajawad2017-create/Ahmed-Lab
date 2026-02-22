@@ -5,6 +5,29 @@ import { decodeBase64, createWavBlob } from "../utils/audioUtils";
 
 const API_KEY = process.env.API_KEY || '';
 
+export async function generateAIText(
+  prompt: string,
+  mode: 'SINGLE' | 'MULTI',
+  language: 'en' | 'ar',
+  speakers: SpeakerConfig[]
+): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const model = ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [{ parts: [{ text: prompt }] }],
+    config: {
+      systemInstruction: `You are a creative writer. Generate a ${mode === 'SINGLE' ? 'monologue' : 'dialogue'} in ${language === 'en' ? 'English' : 'Arabic'}. 
+      ${mode === 'MULTI' ? `The dialogue is between ${speakers[0].name} and ${speakers[1].name}. Format it as:
+      ${speakers[0].name}: [text]
+      ${speakers[1].name}: [text]` : 'Just provide the text for the monologue.'}
+      Keep it concise (under 100 words).`,
+    }
+  });
+
+  const response = await model;
+  return response.text || '';
+}
+
 export async function generateTTS(
   text: string,
   mode: 'SINGLE' | 'MULTI',

@@ -1,5 +1,5 @@
 {
-  "name": "Lumina TTS: Bilingual English & Arabic",
-  "description": "A high-fidelity text-to-speech application supporting English and Arabic with single and multi-speaker capabilities using Gemini's native human-like voices.",
+  "name": "Lumina AI: Text-to-Speech & Content Creator",
+  "description": "Generate AI content and convert it to high-fidelity speech in English and Arabic. Supports solo monologues and duo dialogues with custom voices.",
   "requestFramePermissions": []
 }

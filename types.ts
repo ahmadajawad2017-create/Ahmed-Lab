@@ -1,10 +1,13 @@
 
 export type VoiceName = 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
 
+export type Gender = 'male' | 'female';
+
 export interface SpeakerConfig {
   id: string;
   name: string;
   voice: VoiceName;
+  gender: Gender;
 }
 
 export enum TTSMode {
